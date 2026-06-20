@@ -6,7 +6,7 @@ import connectDB from './config/db';
 import authRoutes from './routes/auth.routes';
 import tripRoutes from './routes/trip.routes';
 
-dotenv.config({ override: true });
+dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
