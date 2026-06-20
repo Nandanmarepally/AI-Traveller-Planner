@@ -9,7 +9,7 @@ import tripRoutes from './routes/trip.routes';
 dotenv.config({ override: true });
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
 // --- Middleware ---
 app.use(
@@ -46,8 +46,8 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 // --- Start Server ---
 const startServer = async () => {
   await connectDB();
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${PORT}`);
     console.log(`🌍 CORS enabled for: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
   });
 };
