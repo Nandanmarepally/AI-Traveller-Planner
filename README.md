@@ -1,5 +1,7 @@
 # AI Travel Planner 🌍✈️
 
+[Watch the Demo on Loom](https://www.loom.com/share/920ff47d87b7423484064f9429da46aa)
+
 A full-stack AI-powered travel planning application built with Next.js 15, Express.js, MongoDB, and Google Gemini AI.
 
 ## Features
