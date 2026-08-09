@@ -10,9 +10,9 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const db_1 = __importDefault(require("./config/db"));
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const trip_routes_1 = __importDefault(require("./routes/trip.routes"));
-dotenv_1.default.config({ override: true });
+dotenv_1.default.config();
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 // --- Middleware ---
 app.use((0, cors_1.default)({
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -41,8 +41,8 @@ app.use((err, _req, res, _next) => {
 // --- Start Server ---
 const startServer = async () => {
     await (0, db_1.default)();
-    app.listen(PORT, () => {
-        console.log(`🚀 Server running on http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 Server running on port ${PORT}`);
         console.log(`🌍 CORS enabled for: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
     });
 };
