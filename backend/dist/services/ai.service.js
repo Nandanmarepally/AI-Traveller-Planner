@@ -5,10 +5,10 @@ const weather_service_1 = require("./weather.service");
 // ─── OpenRouter config ────────────────────────────────────────────────────────
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const getOpenRouterConfig = () => {
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY?.trim();
     if (!apiKey)
         throw new Error('OPENROUTER_API_KEY is not configured in .env');
-    const model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+    const model = process.env.OPENROUTER_MODEL?.trim() || 'openrouter/free';
     return { apiKey, model };
 };
 // ─── JSON parser (strips markdown fences if present) ─────────────────────────
@@ -30,6 +30,7 @@ const parseAIJson = (raw) => {
 };
 const complete = async (messages, maxTokens = 4096) => {
     const { apiKey, model } = getOpenRouterConfig();
+    console.log(`🤖 Sending OpenRouter request — model: "${model}", key configured: ${!!apiKey}`);
     const response = await fetch(OPENROUTER_URL, {
         method: 'POST',
         headers: {
@@ -43,9 +44,11 @@ const complete = async (messages, maxTokens = 4096) => {
             max_tokens: maxTokens,
         }),
     });
+    console.log(`OpenRouter status: ${response.status}`);
     if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`OpenRouter API error ${response.status}: ${errorText.slice(0, 200)}`);
+        console.error(`❌ OpenRouter error response body: ${errorText}`);
+        throw new Error(`OpenRouter API error ${response.status}: ${errorText}`);
     }
     const data = await response.json();
     return data.choices[0]?.message?.content ?? '';

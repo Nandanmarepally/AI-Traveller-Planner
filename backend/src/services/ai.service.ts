@@ -11,9 +11,9 @@ export interface AITripResult {
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 const getOpenRouterConfig = (): { apiKey: string; model: string } => {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured in .env');
-  const model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+  const model = process.env.OPENROUTER_MODEL?.trim() || 'openrouter/free';
   return { apiKey, model };
 };
 
@@ -46,6 +46,8 @@ const complete = async (
 ): Promise<string> => {
   const { apiKey, model } = getOpenRouterConfig();
 
+  console.log(`🤖 Sending OpenRouter request — model: "${model}", key configured: ${!!apiKey}`);
+
   const response = await fetch(OPENROUTER_URL, {
     method: 'POST',
     headers: {
@@ -60,9 +62,12 @@ const complete = async (
     }),
   });
 
+  console.log(`OpenRouter status: ${response.status}`);
+
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`OpenRouter API error ${response.status}: ${errorText.slice(0, 200)}`);
+    console.error(`❌ OpenRouter error response body: ${errorText}`);
+    throw new Error(`OpenRouter API error ${response.status}: ${errorText}`);
   }
 
   const data = await response.json() as {
