@@ -39,8 +39,8 @@ const createTrip = async (req, res) => {
     }
     catch (error) {
         console.error('Create trip error:', error);
-        if (error.message?.includes('GEMINI_API_KEY')) {
-            res.status(503).json({ message: 'AI service not configured. Please set GEMINI_API_KEY.' });
+        if (error.message?.includes('OPENROUTER_API_KEY')) {
+            res.status(503).json({ message: 'AI service not configured. Please set OPENROUTER_API_KEY.' });
             return;
         }
         res.status(500).json({ message: 'Failed to create trip', error: error.message });

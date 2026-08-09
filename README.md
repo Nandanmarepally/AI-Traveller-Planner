@@ -6,7 +6,7 @@ A full-stack AI-powered travel planning application built with Next.js 15, Expre
 
 ## Features
 
-- 🤖 **AI Itinerary Generation** — Groq AI (Llama 3.3 70B) creates day-by-day travel plans
+- 🤖 **AI Itinerary Generation** — OpenRouter (Llama 3.3 70B) creates day-by-day travel plans
 - 🌤️ **Weather-Aware Planning** — Checks real weather (Open-Meteo) and adapts activities accordingly
 - ✏️ **Editable Itineraries** — Add/remove activities or regenerate any day with a custom prompt
 - 💬 **Trip Chat Assistant** — Ask your AI assistant anything about your trip
@@ -22,7 +22,7 @@ A full-stack AI-powered travel planning application built with Next.js 15, Expre
 | Backend | Node.js + Express.js + TypeScript |
 | Database | MongoDB Atlas + Mongoose |
 | Auth | JWT + HTTP-Only Cookies |
-| AI | Groq (llama-3.3-70b-versatile) |
+| AI | OpenRouter (meta-llama/llama-3.3-70b-instruct:free) |
 | Weather | Open-Meteo (free, no key required) |
 
 ## Project Structure
@@ -53,7 +53,7 @@ AI Travel Planner/
 ### Prerequisites
 - Node.js 18+
 - MongoDB Atlas account (free tier works)
-- Groq API key from [Groq Console](https://console.groq.com/keys)
+- OpenRouter API key from [OpenRouter](https://openrouter.ai/keys)
 
 ### Backend
 
@@ -70,7 +70,8 @@ AI Travel Planner/
    ```
    MONGODB_URI=mongodb+srv://...
    JWT_SECRET=your_long_random_secret
-   GROQ_API_KEY=your_groq_api_key
+   OPENROUTER_API_KEY=your_openrouter_api_key
+   OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
    CLIENT_URL=http://localhost:3000
    PORT=5000
    ```

@@ -67,11 +67,11 @@ Stores the complete state of a user's generated travel plan.
 
 ## 3. AI Model (LLM) Implementation
 
-The application leverages **Groq SDK** to access high-performance open-source LLMs, specifically using **Llama 3.3 70B Versatile**. The logic is contained in `services/ai.service.ts`.
+The application leverages **OpenRouter API** to access open-source LLMs using native HTTP requests, specifically using **Llama 3.3 70B Instruct** (`meta-llama/llama-3.3-70b-instruct:free`). The logic is contained in `services/ai.service.ts`.
 
 ### Model Details
-- **Provider**: Groq
-- **Model**: `llama-3.3-70b-versatile`
+- **Provider**: OpenRouter
+- **Model**: `meta-llama/llama-3.3-70b-instruct:free`
 - **Temperature**: `0.7` (Balances creativity with logical consistency)
 
 ### Core AI Capabilities
@@ -95,6 +95,6 @@ The application leverages **Groq SDK** to access high-performance open-source LL
 ## 4. Third-Party Integrations
 
 - **Open-Meteo (`weather.service.ts`)**: Fetches 14-day forecasts. The weather data is summarized into a `WeatherContext` string and injected into the AI prompt so the LLM plans indoor activities on rainy days and outdoor activities on sunny days.
-- **Groq API (`ai.service.ts`)**: Powers all LLM generations. Selected for its ultra-fast inference speed, which is critical for UX when generating large JSON itineraries.
+- **OpenRouter API (`ai.service.ts`)**: Powers all LLM generations using `meta-llama/llama-3.3-70b-instruct:free`.
 
 

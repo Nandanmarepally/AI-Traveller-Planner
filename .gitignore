@@ -1,0 +1,16 @@
+# Root .gitignore for AI Travel Planner
+
+node_modules/
+.next/
+out/
+build/
+dist/
+
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+
+.vercel/
+*.tsbuildinfo

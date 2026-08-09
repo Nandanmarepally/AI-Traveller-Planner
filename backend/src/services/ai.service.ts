@@ -1,4 +1,3 @@
-import Groq from 'groq-sdk';
 import { IDay, IBudgetEstimate } from '../models/Trip';
 import { WeatherData, buildWeatherContext } from './weather.service';
 
@@ -8,13 +7,14 @@ export interface AITripResult {
   hotels: string[];
 }
 
-const MODEL = 'llama-3.3-70b-versatile';
+// ─── OpenRouter config ────────────────────────────────────────────────────────
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-// ─── Groq client (singleton-style) ───────────────────────────────────────────
-const getGroqClient = (): Groq => {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error('GROQ_API_KEY is not configured in .env');
-  return new Groq({ apiKey });
+const getOpenRouterConfig = (): { apiKey: string; model: string } => {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured in .env');
+  const model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+  return { apiKey, model };
 };
 
 // ─── JSON parser (strips markdown fences if present) ─────────────────────────
@@ -35,17 +35,41 @@ const parseAIJson = <T>(raw: string): T => {
 };
 
 // ─── Chat helper ──────────────────────────────────────────────────────────────
-const complete = async (groq: Groq, systemPrompt: string, userPrompt: string): Promise<string> => {
-  const completion = await groq.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.7,
-    max_tokens: 4096,
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+const complete = async (
+  messages: ChatMessage[],
+  maxTokens: number = 4096
+): Promise<string> => {
+  const { apiKey, model } = getOpenRouterConfig();
+
+  const response = await fetch(OPENROUTER_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.7,
+      max_tokens: maxTokens,
+    }),
   });
-  return completion.choices[0]?.message?.content ?? '';
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenRouter API error ${response.status}: ${errorText.slice(0, 200)}`);
+  }
+
+  const data = await response.json() as {
+    choices: Array<{ message: { content: string | null } }>;
+  };
+
+  return data.choices[0]?.message?.content ?? '';
 };
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
@@ -132,13 +156,10 @@ export const generateTripItinerary = async (
   interests: string[],
   weather: WeatherData
 ): Promise<AITripResult> => {
-  const groq = getGroqClient();
-
-  const raw = await complete(
-    groq,
-    buildTripSystemPrompt(),
-    buildTripUserPrompt(destination, days, budgetType, interests, weather)
-  );
+  const raw = await complete([
+    { role: 'system', content: buildTripSystemPrompt() },
+    { role: 'user', content: buildTripUserPrompt(destination, days, budgetType, interests, weather) },
+  ]);
 
   const parsed = parseAIJson<{
     itinerary: IDay[];
@@ -174,13 +195,10 @@ export const regenerateDay = async (
   interests: string[],
   customPrompt: string
 ): Promise<IDay> => {
-  const groq = getGroqClient();
-
-  const raw = await complete(
-    groq,
-    buildTripSystemPrompt(),
-    buildRegenerateDayUserPrompt(destination, day, days, budgetType, interests, customPrompt)
-  );
+  const raw = await complete([
+    { role: 'system', content: buildTripSystemPrompt() },
+    { role: 'user', content: buildRegenerateDayUserPrompt(destination, day, days, budgetType, interests, customPrompt) },
+  ], 1024);
 
   const parsed = parseAIJson<IDay>(raw);
 
@@ -205,8 +223,6 @@ export const chatWithTrip = async (
   userMessage: string,
   previousMessages: { role: string; content: string }[]
 ): Promise<string> => {
-  const groq = getGroqClient();
-
   const systemPrompt = `You are a knowledgeable and friendly travel assistant for a trip to ${destination}.
 
 Trip context:
@@ -218,8 +234,8 @@ Trip context:
 
 Answer helpfully and concisely. For budget questions, suggest specific adjustments. For restaurant/activity questions, give specific recommendations.`;
 
-  // Build conversation history for Groq
-  const messages: Groq.Chat.ChatCompletionMessageParam[] = [
+  // Build conversation history for OpenRouter
+  const messages: ChatMessage[] = [
     { role: 'system', content: systemPrompt },
     ...previousMessages.map((m) => ({
       role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
@@ -228,12 +244,8 @@ Answer helpfully and concisely. For budget questions, suggest specific adjustmen
     { role: 'user', content: userMessage },
   ];
 
-  const completion = await groq.chat.completions.create({
-    model: MODEL,
-    messages,
-    temperature: 0.7,
-    max_tokens: 1024,
-  });
-
-  return completion.choices[0]?.message?.content ?? 'Sorry, I could not generate a response.';
+  const response = await complete(messages, 1024);
+  return response || 'Sorry, I could not generate a response.';
 };
+
+

@@ -1,18 +1,15 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.chatWithTrip = exports.regenerateDay = exports.generateTripItinerary = void 0;
-const groq_sdk_1 = __importDefault(require("groq-sdk"));
 const weather_service_1 = require("./weather.service");
-const MODEL = 'llama-3.3-70b-versatile';
-// ─── Groq client (singleton-style) ───────────────────────────────────────────
-const getGroqClient = () => {
-    const apiKey = process.env.GROQ_API_KEY;
+// ─── OpenRouter config ────────────────────────────────────────────────────────
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const getOpenRouterConfig = () => {
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey)
-        throw new Error('GROQ_API_KEY is not configured in .env');
-    return new groq_sdk_1.default({ apiKey });
+        throw new Error('OPENROUTER_API_KEY is not configured in .env');
+    const model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+    return { apiKey, model };
 };
 // ─── JSON parser (strips markdown fences if present) ─────────────────────────
 const parseAIJson = (raw) => {
@@ -31,18 +28,27 @@ const parseAIJson = (raw) => {
         throw new Error(`AI returned non-JSON response: ${cleaned.slice(0, 200)}`);
     }
 };
-// ─── Chat helper ──────────────────────────────────────────────────────────────
-const complete = async (groq, systemPrompt, userPrompt) => {
-    const completion = await groq.chat.completions.create({
-        model: MODEL,
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 4096,
+const complete = async (messages, maxTokens = 4096) => {
+    const { apiKey, model } = getOpenRouterConfig();
+    const response = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.7,
+            max_tokens: maxTokens,
+        }),
     });
-    return completion.choices[0]?.message?.content ?? '';
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter API error ${response.status}: ${errorText.slice(0, 200)}`);
+    }
+    const data = await response.json();
+    return data.choices[0]?.message?.content ?? '';
 };
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 const buildTripSystemPrompt = () => `You are an expert travel planner. You ALWAYS respond with valid JSON only — no markdown, no explanation, no extra text. Never wrap your response in code blocks.`;
@@ -102,8 +108,10 @@ Respond ONLY with this JSON (no markdown, no explanation):
  * Generate a full AI-powered trip itinerary with weather context.
  */
 const generateTripItinerary = async (destination, days, budgetType, interests, weather) => {
-    const groq = getGroqClient();
-    const raw = await complete(groq, buildTripSystemPrompt(), buildTripUserPrompt(destination, days, budgetType, interests, weather));
+    const raw = await complete([
+        { role: 'system', content: buildTripSystemPrompt() },
+        { role: 'user', content: buildTripUserPrompt(destination, days, budgetType, interests, weather) },
+    ]);
     const parsed = parseAIJson(raw);
     if (!Array.isArray(parsed.itinerary) || parsed.itinerary.length === 0) {
         throw new Error('AI returned an invalid or empty itinerary');
@@ -125,8 +133,10 @@ exports.generateTripItinerary = generateTripItinerary;
  * Regenerate a single day with a custom prompt.
  */
 const regenerateDay = async (destination, day, days, budgetType, interests, customPrompt) => {
-    const groq = getGroqClient();
-    const raw = await complete(groq, buildTripSystemPrompt(), buildRegenerateDayUserPrompt(destination, day, days, budgetType, interests, customPrompt));
+    const raw = await complete([
+        { role: 'system', content: buildTripSystemPrompt() },
+        { role: 'user', content: buildRegenerateDayUserPrompt(destination, day, days, budgetType, interests, customPrompt) },
+    ], 1024);
     const parsed = parseAIJson(raw);
     if (!parsed.day || !Array.isArray(parsed.activities)) {
         throw new Error('AI returned an invalid day structure');
@@ -138,7 +148,6 @@ exports.regenerateDay = regenerateDay;
  * Trip chat assistant — answers questions in the context of the current trip.
  */
 const chatWithTrip = async (destination, days, budgetType, interests, itinerary, budgetEstimate, hotels, userMessage, previousMessages) => {
-    const groq = getGroqClient();
     const systemPrompt = `You are a knowledgeable and friendly travel assistant for a trip to ${destination}.
 
 Trip context:
@@ -149,7 +158,7 @@ Trip context:
 - Itinerary: ${itinerary.map((d) => `Day ${d.day} (${d.theme}): ${d.activities.join(', ')}`).join(' | ')}
 
 Answer helpfully and concisely. For budget questions, suggest specific adjustments. For restaurant/activity questions, give specific recommendations.`;
-    // Build conversation history for Groq
+    // Build conversation history for OpenRouter
     const messages = [
         { role: 'system', content: systemPrompt },
         ...previousMessages.map((m) => ({
@@ -158,12 +167,7 @@ Answer helpfully and concisely. For budget questions, suggest specific adjustmen
         })),
         { role: 'user', content: userMessage },
     ];
-    const completion = await groq.chat.completions.create({
-        model: MODEL,
-        messages,
-        temperature: 0.7,
-        max_tokens: 1024,
-    });
-    return completion.choices[0]?.message?.content ?? 'Sorry, I could not generate a response.';
+    const response = await complete(messages, 1024);
+    return response || 'Sorry, I could not generate a response.';
 };
 exports.chatWithTrip = chatWithTrip;

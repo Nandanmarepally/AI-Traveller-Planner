@@ -62,7 +62,7 @@ The application keeps state management light and modular, avoiding heavy librari
 ## 4. Key UI Components & Flows
 
 ### `ChatAssistant.tsx`
-- **Purpose**: A context-aware chat interface allowing the user to converse with the Groq AI specifically about the trip they are viewing.
+- **Purpose**: A context-aware chat interface allowing the user to converse with the AI specifically about the trip they are viewing.
 - **Interaction**: Captures user input, displays message history (`role: 'user' | 'assistant'`), and calls `tripApi.chatWithTrip(id, message)`.
 
 ### `DayCard.tsx`
